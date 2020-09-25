@@ -46,6 +46,15 @@ class Transaction:
 							'value': self.value
 		})
 
+	def sign_transaction(self):
+        """
+        Sign transaction with private key
+        """
+        private_key = RSA.importKey(binascii.unhexlify(self.sender_private_key))
+        signer = PKCS1_v1_5.new(private_key)
+        h = SHA.new(str(self.to_dict()).encode('utf8'))
+        return binascii.hexlify(signer.sign(h)).decode('ascii')
+
 #inicia a pagina web
 app = Flask(__name__)
 
@@ -60,6 +69,7 @@ def make_transaction():
 	return render_template('./make_transaction.html')
 
 #rota para a aba de consulta de transações
+@app.route('/view/transactions')
 def view_transaction():
 	return render_template('./view_transactions.html')
 
@@ -73,6 +83,8 @@ def new_wallet():
 		'private_key': binascii.hexlify(private_key.exportKey(format='DER')).decode('ascii'),
 		'public_key': binascii.hexlify(public_key.exportKey(format='DER')).decode('ascii')
 	}
+
+	return jsonify(response), 200
 
 #método para a publicação de uma transação na rede
 @app.route('/generate/transaction', methods=['POST'])

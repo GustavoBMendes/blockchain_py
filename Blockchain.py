@@ -157,6 +157,10 @@ def new_transaction():
 
     return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
 
+@app.route('/mine', methods=['GET'])
+def mine_transactions():
+    newblock = blockchain.mine()
+
+    return json.dumps({'block': newblock})
 
 app.run(debug=True, port=5000)
-

@@ -4,6 +4,11 @@
 # In[39]:
 
 
+import binascii
+
+import Crypto
+from Crypto.PublicKey import RSA
+
 from hashlib import sha256
 import json
 import time
@@ -137,6 +142,17 @@ def get_chain():
 
 
 # In[45]:
+
+@app.route('/carteira', methods=['GET'])
+def gerar_carteira():
+    random_key = Crypto.Random.new().read
+    private_key = RSA.generate(1024, random_key)
+    public_key = private_key.publickey()
+
+    return json.dumps({
+        'private_key': binascii.hexlify(private_key.exportKey(format='DER')).decode('ascii'),
+        'public_key': binascii.hexlify(public_key.exportKey(format='DER')).decode('ascii')
+    })
 
 @app.route('/block', methods=['GET'])
 def get_lastblock():

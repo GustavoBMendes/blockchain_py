@@ -9,11 +9,12 @@ import binascii
 import Crypto
 from Crypto.PublicKey import RSA
 
+from argparse import ArgumentParser
 from hashlib import sha256
 import json
 import time
 
-from flask import Flask, request
+from flask import Flask, request, render_template,jsonify
 import requests
 
 
@@ -123,6 +124,8 @@ class Blockchain:
         self.unconfirmed_transactions = []
         return new_block.index
 
+    #função para verificar chave pública de quem está iniciando a transação
+    
 
 app = Flask(__name__)
 blockchain = Blockchain()
@@ -130,6 +133,13 @@ blockchain = Blockchain()
 
 # In[41]:
 
+@app.route('/')
+def index():
+    return render_template('./index.html')
+
+@app.route('/nova_transacao')
+def nova_transacao():
+    return render_template('./fazer_transacao.html')
 
 @app.route('/chain', methods=['GET'])
 def get_chain():
@@ -149,10 +159,12 @@ def gerar_carteira():
     private_key = RSA.generate(1024, random_key)
     public_key = private_key.publickey()
 
-    return json.dumps({
+    response = {
         'private_key': binascii.hexlify(private_key.exportKey(format='DER')).decode('ascii'),
         'public_key': binascii.hexlify(public_key.exportKey(format='DER')).decode('ascii')
-    })
+    }
+
+    return jsonify(response), 200
 
 @app.route('/block', methods=['GET'])
 def get_lastblock():
@@ -161,17 +173,25 @@ def get_lastblock():
     lb.append(block.__dict__)
     return json.dumps({'lastblock': lb})
 
-@app.route('/transactions', methods=['GET'])
+@app.route('/transactions', methods=['POST'])
 def new_transaction():
     transaction = dict()
-    transaction['sender'] = 'Gustavo'
-    transaction['receiver'] = 'Fernandao'
-    transaction['amount'] = 1000
+    #transaction['sender'] = 'Gustavo'
+    #transaction['receiver'] = 'Fernandao'
+    #transaction['amount'] = 1000
 
     blockchain.add_new_transaction(transaction)
     print('Transação iniciada!')
 
-    return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
+    response = {
+        'sender_address': request.form['sender_address'],
+        'sender_private_key': request.form['sender_private_key'],
+        'recipient_address': request.form['recipient_address'],
+        'amount': request.form['amount'],
+    }
+
+    return jsonify(response), 200
+    #return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
 
 @app.route('/mine', methods=['GET'])
 def mine_transactions():
@@ -179,4 +199,8 @@ def mine_transactions():
 
     return json.dumps({'block': newblock})
 
-app.run(debug=True, port=5000)
+parser = ArgumentParser()
+parser.add_argument('-p', '--port', default=5000, type=int, help='porta a ser utilizada')
+args = parser.parse_args()
+port = args.port
+app.run(debug=True, port=port)

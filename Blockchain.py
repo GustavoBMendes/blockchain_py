@@ -141,14 +141,23 @@ def index():
 def nova_transacao():
     return render_template('./fazer_transacao.html')
 
+@app.route('/consultar_transacoes')
+def consultar_transacoes():
+    return render_template('./consulta.html')
+
 @app.route('/chain', methods=['GET'])
 def get_chain():
     chain_data = []
     for block in blockchain.chain:
         chain_data.append(block.__dict__)
     #print(chain_data[0]['timestamp'])
-    return json.dumps({"length": len(chain_data),
-                       "chain": chain_data})
+
+    response = {
+        'length': len(chain_data),
+        'chain': chain_data
+    }
+
+    return jsonify(response), 200
 
 
 # In[45]:
@@ -175,7 +184,7 @@ def get_lastblock():
 
 @app.route('/transactions', methods=['POST'])
 def new_transaction():
-    
+
     transaction = dict()
 
     transaction['sender_address'] = request.form['sender_address']

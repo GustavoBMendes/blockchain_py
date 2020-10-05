@@ -175,10 +175,13 @@ def get_lastblock():
 
 @app.route('/transactions', methods=['POST'])
 def new_transaction():
+    
     transaction = dict()
-    #transaction['sender'] = 'Gustavo'
-    #transaction['receiver'] = 'Fernandao'
-    #transaction['amount'] = 1000
+
+    transaction['sender_address'] = request.form['sender_address']
+    transaction['sender_private_key'] = request.form['sender_private_key'],
+    transaction['recipient_address'] = request.form['recipient_address'],
+    transaction['amount'] = request.form['amount']
 
     blockchain.add_new_transaction(transaction)
     print('Transação iniciada!')
@@ -195,6 +198,8 @@ def new_transaction():
 
 @app.route('/mine', methods=['GET'])
 def mine_transactions():
+
+    #incluir processo de verificação da assinatura digital por meio da chave primária
     newblock = blockchain.mine()
 
     return json.dumps({'block': newblock})

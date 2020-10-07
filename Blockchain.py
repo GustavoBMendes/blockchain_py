@@ -8,6 +8,8 @@ import binascii
 
 import Crypto
 from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA
 
 from argparse import ArgumentParser
 from hashlib import sha256
@@ -16,6 +18,7 @@ import time
 
 from flask import Flask, request, render_template,jsonify
 import requests
+from collections import OrderedDict
 
 
 class Block:
@@ -185,6 +188,12 @@ def get_lastblock():
 @app.route('/transactions', methods=['POST'])
 def new_transaction():
 
+    values = request.form
+    info_necessaria = ['sender_address',  'sender_private_key', 'recipient_address', 'amount']
+    if not all(k in values for k in info_necessaria):
+        print('Faltando info')
+        return 'Faltando informações', 400
+        
     transaction = dict()
 
     transaction['sender_address'] = request.form['sender_address']
@@ -192,18 +201,35 @@ def new_transaction():
     transaction['recipient_address'] = request.form['recipient_address'],
     transaction['amount'] = request.form['amount']
 
-    blockchain.add_new_transaction(transaction)
-    print('Transação iniciada!')
+    dict_verf = OrderedDict({ 'sender_address': values['sender_address'], 'recipient_address': values['recipient_address'], 'amount': values['amount'] })
 
-    response = {
-        'sender_address': request.form['sender_address'],
-        'sender_private_key': request.form['sender_private_key'],
-        'recipient_address': request.form['recipient_address'],
-        'amount': request.form['amount'],
-    }
+    privKey = RSA.importKey(binascii.unhexlify(values['sender_private_key']))
+    assinatura = PKCS1_v1_5.new(privKey)
+    h0 = SHA.new(str(dict_verf).encode('utf8'))
+    digital_sign = binascii.hexlify(assinatura.sign(h0)).decode('ascii')
+    
+    pubKey = RSA.importKey(binascii.unhexlify(values['sender_address']))
+    verifica = PKCS1_v1_5.new(pubKey)
+    h = SHA.new(str(dict_verf).encode('utf8'))
 
-    return jsonify(response), 200
-    #return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
+    if verifica.verify(h, binascii.unhexlify(digital_sign)):
+
+        blockchain.add_new_transaction(transaction)
+        print('Transação iniciada!')
+
+        response = {
+            'sender_address': request.form['sender_address'],
+            'sender_private_key': request.form['sender_private_key'],
+            'recipient_address': request.form['recipient_address'],
+            'amount': request.form['amount'],
+        }
+
+        return jsonify(response), 200
+        #return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
+
+    else:
+        response = {'message': 'Assinatura digital rejeitada!'}
+        return jsonify(response), 406
 
 @app.route('/mine', methods=['GET'])
 def mine_transactions():

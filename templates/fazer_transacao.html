@@ -56,7 +56,7 @@
 		</div>
 
 		<div class="container">
-		<form id='transaction_form'>
+		<form id='transaction_form' name='formulario'>
 			
 			<div class="row">
 				<label class="col-sm-3">Seu endereço (chave pública):</label>
@@ -105,34 +105,98 @@
 		</form>
 		</div>
 
+		<div class="modal modal-alert fade" id="success_transaction_modal" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+	      <div class="modal-dialog">
+	        <div class="modal-content">
+
+	          <div class="modal-header">
+	            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+	          </div>
+
+	          <div class="modal-body">
+	            <div class="alert alert-success" role="alert">
+	              <h4 class="alert-heading">Transação feita com sucesso!</h4>
+	              <p>Em breve ela será aprovada e depositada na conta do destinatário!</p>
+	            </div>
+	          </div>
+
+	          <div class="modal-footer">
+	            <button type="button" id="button_confirm_transaction" class="btn btn-success" data-dismiss="modal">OK</button>
+	          </div>
+
+	        </div>
+	      </div>
+	    </div>
+
+	    <div class="modal modal-alert fade" id="fail_transaction_modal" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+	      <div class="modal-dialog">
+	        <div class="modal-content">
+
+	          <div class="modal-header">
+	            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+	          </div>
+
+	          <div class="modal-body">
+	            <div class="alert alert-danger" role="alert">
+	              <h4 class="alert-heading">Atenção!</h4>
+	              <p>Faltam informações para completar a transação, por favor, preencha todos os campos.</p>
+	            </div>
+	          </div>
+
+	          <div class="modal-footer">
+	            <button type="button" id="button_fail_transaction" class="btn" data-dismiss="modal">OK</button>
+	          </div>
+
+	        </div>
+	      </div>
+	    </div>
+
 		<script src="/static/vendor/jquery/jquery.min.js"></script>
 	    <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 		<script>
+			//function enviarDados() {
+				//console.log(document.getElementById('amount').length);
+				
 
-			$(function() {
-				$('#generate_transaction').click(function() {
+					$(function() {
+						$('#generate_transaction').click(function() {
+							if(document.getElementById('amount').value !== ""){
+								$.ajax({
+									url: '/transactions',
+									type: 'POST',
+									dataType: 'json',
+									data: $('#transaction_form').serialize(),
+									success: function(response){
 
-					$.ajax({
-						url: '/transactions',
-						type: 'POST',
-						dataType: 'json',
-						data: $('#transaction_form').serialize(),
-						success: function(response){
+										document.getElementById('sender_address').value = response['sender_address'];
+										document.getElementById('sender_private_key').value = response['sender_private_key'];
+										document.getElementById('recipient_address').value = response['recipient_address'];
+										document.getElementById('amount').value = response['amount'];						
 
-							document.getElementById('sender_address').value = response['sender_address'];
-							document.getElementById('sender_private_key').value = response['sender_private_key'];
-							document.getElementById('recipient_address').value = response['recipient_address'];
-							document.getElementById('amount').value = response['amount'];						
+										$("#success_transaction_modal").modal('show');
 
-						},
-						error: function(error){
-							console.log(error);
-						}
+										$("#transaction_form")[0].reset();
+
+										$('#sender_address').val(""); 
+										$('#sender_private_key').val("");
+										$('#recipient_address').val("");
+										$('#amount').val("");
+
+									},
+									error: function(error){
+										console.log(error);
+									}
+								});
+							}
+							else{
+								$("#fail_transaction_modal").modal('show');
+							}
+						});
 					});
 
-				});
-			});
+				
+			//}
 
 		</script>
 

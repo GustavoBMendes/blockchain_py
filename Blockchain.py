@@ -129,16 +129,22 @@ class Blockchain:
 
     #função para verificar chave privada de quem está iniciando a transação
     def assinar_transacao(self, transacao, chave_privada):
-        privKey = RSA.importKey(binascii.unhexlify(chave_privada))
-        assinatura = PKCS1_v1_5.new(privKey)
-        h0 = SHA.new(str(transacao).encode('utf8'))
-        return binascii.hexlify(assinatura.sign(h0)).decode('ascii')
+        try:
+            privKey = RSA.importKey(binascii.unhexlify(chave_privada))
+            assinatura = PKCS1_v1_5.new(privKey)
+            h0 = SHA.new(str(transacao).encode('utf8'))
+            return binascii.hexlify(assinatura.sign(h0)).decode('ascii')
+        except:
+            print('Chave privada não foi validada!')
 
     def verificar_assinatura(self, transacao, chave_publica, assinatura):
-        pubKey = RSA.importKey(binascii.unhexlify(chave_publica))
-        verifica = PKCS1_v1_5.new(pubKey)
-        h = SHA.new(str(transacao).encode('utf8'))
-        return verifica.verify(h, binascii.unhexlify(assinatura))
+        try:
+            pubKey = RSA.importKey(binascii.unhexlify(chave_publica))
+            verifica = PKCS1_v1_5.new(pubKey)
+            h = SHA.new(str(transacao).encode('utf8'))
+            return verifica.verify(h, binascii.unhexlify(assinatura))
+        except:
+            print('Assinatura da transação não foi validada!')
     
 
 app = Flask(__name__)

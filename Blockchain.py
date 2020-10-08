@@ -127,7 +127,18 @@ class Blockchain:
         self.unconfirmed_transactions = []
         return new_block.index
 
-    #função para verificar chave pública de quem está iniciando a transação
+    #função para verificar chave privada de quem está iniciando a transação
+    def assinar_transacao(self, transacao, chave_privada):
+        privKey = RSA.importKey(binascii.unhexlify(chave_privada))
+        assinatura = PKCS1_v1_5.new(privKey)
+        h0 = SHA.new(str(transacao).encode('utf8'))
+        return binascii.hexlify(assinatura.sign(h0)).decode('ascii')
+
+    def verificar_assinatura(self, transacao, chave_publica, assinatura):
+        pubKey = RSA.importKey(binascii.unhexlify(chave_publica))
+        verifica = PKCS1_v1_5.new(pubKey)
+        h = SHA.new(str(transacao).encode('utf8'))
+        return verifica.verify(h, binascii.unhexlify(assinatura))
     
 
 app = Flask(__name__)
@@ -197,31 +208,30 @@ def new_transaction():
     transaction = dict()
 
     transaction['sender_address'] = request.form['sender_address']
-    transaction['sender_private_key'] = request.form['sender_private_key'],
     transaction['recipient_address'] = request.form['recipient_address'],
     transaction['amount'] = request.form['amount']
 
+    #copia da transacao para nao alterar o dict transaction
     dict_verf = OrderedDict({ 'sender_address': values['sender_address'], 'recipient_address': values['recipient_address'], 'amount': values['amount'] })
 
-    privKey = RSA.importKey(binascii.unhexlify(values['sender_private_key']))
-    assinatura = PKCS1_v1_5.new(privKey)
-    h0 = SHA.new(str(dict_verf).encode('utf8'))
-    digital_sign = binascii.hexlify(assinatura.sign(h0)).decode('ascii')
+    #gerar assinatura da transacao
+    digital_sign = blockchain.assinar_transacao(dict_verf, values['sender_private_key'])
     
-    pubKey = RSA.importKey(binascii.unhexlify(values['sender_address']))
-    verifica = PKCS1_v1_5.new(pubKey)
-    h = SHA.new(str(dict_verf).encode('utf8'))
+    #verificar assinatura da transacao
+    verificador = blockchain.verificar_assinatura(dict_verf, values['sender_address'], digital_sign)
 
-    if verifica.verify(h, binascii.unhexlify(digital_sign)):
+    transaction['assinatura'] = digital_sign
+
+    if verificador:
 
         blockchain.add_new_transaction(transaction)
         print('Transação iniciada!')
 
         response = {
             'sender_address': request.form['sender_address'],
-            'sender_private_key': request.form['sender_private_key'],
             'recipient_address': request.form['recipient_address'],
             'amount': request.form['amount'],
+            'assinatura': digital_sign
         }
 
         return jsonify(response), 200

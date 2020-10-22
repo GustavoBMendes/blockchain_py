@@ -11,6 +11,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA
 
+from urllib.parse import urlparse
 from argparse import ArgumentParser
 from hashlib import sha256
 import json
@@ -161,6 +162,10 @@ def index():
 def nova_transacao():
     return render_template('./fazer_transacao.html')
 
+@app.route('/minerar')
+def page_minerar():
+    return render_template('./minerar.html')
+
 @app.route('/consultar_transacoes')
 def consultar_transacoes():
     return render_template('./consulta.html')
@@ -202,7 +207,15 @@ def get_lastblock():
     lb.append(block.__dict__)
     return json.dumps({'lastblock': lb})
 
-@app.route('/transactions', methods=['POST'])
+@app.route('/get_transactions', methods=['GET']) 
+def get_transactions():
+    transacoes = blockchain.unconfirmed_transactions
+    response = {
+        'transacoes': transacoes
+    }
+    return jsonify(response), 200
+
+@app.route('/gerar_transacao', methods=['POST'])
 def new_transaction():
 
     values = request.form
@@ -210,7 +223,7 @@ def new_transaction():
     if not all(k in values for k in info_necessaria):
         print('Faltando info')
         return 'Faltando informações', 400
-        
+
     transaction = dict()
 
     transaction['sender_address'] = request.form['sender_address']
@@ -228,26 +241,19 @@ def new_transaction():
 
     transaction['assinatura'] = digital_sign
 
-    if verificador:
+    print('Transação gerada')
+    blockchain.add_new_transaction(transaction)
+    response = {
+        'sender_address': values['sender_address'],
+        'recipient_address': values['recipient_address'],
+        'amount': values['amount'],
+        'assinatura': digital_sign
+    }
 
-        blockchain.add_new_transaction(transaction)
-        print('Transação iniciada!')
+    return jsonify(response), 200
+    #return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
 
-        response = {
-            'sender_address': request.form['sender_address'],
-            'recipient_address': request.form['recipient_address'],
-            'amount': request.form['amount'],
-            'assinatura': digital_sign
-        }
-
-        return jsonify(response), 200
-        #return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
-
-    else:
-        response = {'message': 'Assinatura digital rejeitada!'}
-        return jsonify(response), 406
-
-@app.route('/mine', methods=['GET'])
+@app.route('/mine', methods=['GET']) 
 def mine_transactions():
 
     #incluir processo de verificação da assinatura digital por meio da chave primária

@@ -184,30 +184,33 @@
 	    <script src="/static/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
 
 		<script>
-			
+			//portas 2000 e 2001
 			$(function() {
 				$('#generate_transaction').click(function() {
 					if(document.getElementById('amount').value !== "" && document.getElementById('recipient_address').value !== "" && document.getElementById('sender_address').value !== "" && document.getElementById('sender_private_key').value !== ""){
 						$.ajax({
-							url: 'http://127.0.0.1:5001/gerar_transacao',
+							url: 'http://127.0.0.1:5000/gerar_transacao',
 							type: 'POST',
+							crossorigin: 'anonymous',
+							headers:{'Access-Control-Allow-Origin':'*'},
 							dataType: 'json',
 							data: $('#transaction_form').serialize(),
-							success: function(response){
+							success: function(){
 
 								$("#success_transaction_modal").modal('show');
 
-								$("#transaction_form")[0].reset();
+								//$("#transaction_form")[0].reset();
 
-								$('#sender_address').val(""); 
-								$('#sender_private_key').val("");
-								$('#recipient_address').val("");
-								$('#amount').val("");
-
+								//$('#sender_address').val(""); 
+								//$('#sender_private_key').val("");
+								//$('#recipient_address').val("");
+								//$('#amount').val("");
+							
 							},
+							
 							error: function(error){
 								console.log(error);
-								//$("#key_fail").modal('show');
+								$("#key_fail").modal('show');
 							}
 						});
 					}
@@ -215,7 +218,7 @@
 						$("#fail_transaction_modal").modal('show');
 					}
 				});
-			});
+			})
 
 		</script>
 

@@ -18,6 +18,7 @@ import json
 import time
 
 from flask import Flask, request, render_template,jsonify
+from flask_cors import CORS
 import requests
 from collections import OrderedDict
 
@@ -149,6 +150,7 @@ class Blockchain:
     
 
 app = Flask(__name__)
+CORS(app)
 blockchain = Blockchain()
 
 
@@ -239,18 +241,24 @@ def new_transaction():
     #verificar assinatura da transacao
     verificador = blockchain.verificar_assinatura(dict_verf, values['sender_address'], digital_sign)
 
-    transaction['assinatura'] = digital_sign
+    if verificador == True:
 
-    print('Transação gerada')
-    blockchain.add_new_transaction(transaction)
-    response = {
-        'sender_address': values['sender_address'],
-        'recipient_address': values['recipient_address'],
-        'amount': values['amount'],
-        'assinatura': digital_sign
-    }
+        transaction['assinatura'] = digital_sign
 
-    return jsonify(response), 200
+        print('Transação gerada')
+        blockchain.add_new_transaction(transaction)
+        response = {
+            'sender_address': values['sender_address'],
+            'recipient_address': values['recipient_address'],
+            'amount': values['amount'],
+            'assinatura': digital_sign
+        }
+
+        return jsonify(response), 201
+
+    else:
+        response={'message': 'Assinatura inválida!'}
+        return jsonify(response), 406
     #return json.dumps({'newTransaction': blockchain.unconfirmed_transactions})
 
 @app.route('/mine', methods=['GET']) 
@@ -265,4 +273,4 @@ parser = ArgumentParser()
 parser.add_argument('-p', '--port', default=5000, type=int, help='porta a ser utilizada')
 args = parser.parse_args()
 port = args.port
-app.run(debug=True, port=port)
+app.run(host='127.0.0.1', debug=True, port=port)

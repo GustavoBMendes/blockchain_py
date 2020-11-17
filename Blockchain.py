@@ -12,6 +12,7 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA
 
 from urllib.parse import urlparse
+from uuid import uuid4
 from argparse import ArgumentParser
 from hashlib import sha256
 import json
@@ -24,11 +25,11 @@ from collections import OrderedDict
 
 
 class Block:
-    def __init__(self, index, transactions, timestamp, previous_hash):
+    def __init__(self, index, transactions, timestamp, hash_anterior):
         self.index = index
         self.transactions = transactions
         self.timestamp = timestamp
-        self.previous_hash = previous_hash
+        self.hash_anterior = hash_anterior
         self.nonce = 0
 
     def compute_hash(self):
@@ -46,40 +47,55 @@ class Blockchain:
     def __init__(self):
         self.unconfirmed_transactions = []
         self.chain = []
-        self.create_genesis_block()
+        self.gerar_primeiro_bloco()
+        self.nodes = set()
+        self.node_id = str(uuid4()).replace('-', '')
 
-    def create_genesis_block(self):
-        """
-        A function to generate genesis block and appends it to
-        the chain. The block has index 0, previous_hash as 0, and
-        a valid hash.
-        """
-        genesis_block = Block(0, [], time.time(), "0")
-        genesis_block.hash = genesis_block.compute_hash()
-        self.chain.append(genesis_block)
+    def gerar_primeiro_bloco(self):
+        #cria o bloco raiz da cadeia
+        primeiro_bloco = Block(0, [], time.time(), "0")
+        primeiro_bloco.hash = primeiro_bloco.compute_hash()
+        self.chain.append({
+            'index': 0,
+            'transactions': [],
+            'timestamp': time.time(),
+            'hash_anterior': "0",
+            'hash': primeiro_bloco.hash
+        })
+
+    def add_node(self, node_url):
+        #verifica se o formato é correto e adiciona o nó
+        parsed_url = urlparse(node_url)
+        if parsed_url.netloc:
+            self.nodes.add(parsed_url.netloc)
+        elif parsed_url.path:
+            # Accepts an URL without scheme like '192.168.0.5:5000'.
+            self.nodes.add(parsed_url.path)
+        else:
+            raise ValueError('Invalid URL')
 
     @property
-    def last_block(self):
+    def ultimo_bloco(self):
         return self.chain[-1]
 
-    def add_block(self, block, proof):
+    def add_block(self, block, proof, copia):
         """
         A function that adds the block to the chain after verification.
         Verification includes:
         * Checking if the proof is valid.
-        * The previous_hash referred in the block and the hash of latest block
+        * The hash_anterior referred in the block and the hash of latest block
           in the chain match.
         """
-        previous_hash = self.last_block.hash
+        hash_anterior = self.ultimo_bloco['hash']
 
-        if previous_hash != block.previous_hash:
+        if hash_anterior != block.hash_anterior:
             return False
 
         if not self.is_valid_proof(block, proof):
             return False
 
         block.hash = proof
-        self.chain.append(block)
+        self.chain.append(copia)
         return True
 
     def is_valid_proof(self, block, block_hash):
@@ -116,15 +132,24 @@ class Blockchain:
         if not self.unconfirmed_transactions:
             return False
 
-        last_block = self.last_block
+        ultimo_bloco = self.ultimo_bloco
 
-        new_block = Block(index=last_block.index + 1,
+        new_block = Block(index=ultimo_bloco['index'] + 1,
                           transactions=self.unconfirmed_transactions,
                           timestamp=time.time(),
-                          previous_hash=last_block.hash)
+                          hash_anterior=ultimo_bloco['hash'])
 
         proof = self.proof_of_work(new_block)
-        self.add_block(new_block, proof)
+        
+        copia_bloco = {
+            'index': ultimo_bloco['index'] + 1,
+            'transactions': self.unconfirmed_transactions,
+            'timestamp': time.time(),
+            'hash_anterior': ultimo_bloco['hash'],
+            'hash': proof
+        }
+
+        self.add_block(new_block, proof, copia_bloco)
 
         self.unconfirmed_transactions = []
         return new_block.index
@@ -148,6 +173,25 @@ class Blockchain:
         except:
             print('Assinatura da transação não foi validada!')
     
+    def att_chain(self, nova_chain):
+        self.chain = nova_chain.copy()
+
+    def consenso(self):
+        vizinhos = self.nodes
+        tamanho_atual = len(self.chain)
+
+        for node in vizinhos:
+            print('http://' + node + '/chain')
+            response = requests.get('http://' + node + '/chain')
+
+            if response.status_code == 200:
+                tam = response.json()['length']
+                print('TAMANHO: ' + str(tam))
+                cadeia = response.json()['chain']
+
+                if tam < tamanho_atual:
+                    requests.get('http://' + node + '/att_chain/' + str(port))
+
 
 app = Flask(__name__)
 CORS(app)
@@ -159,6 +203,10 @@ blockchain = Blockchain()
 @app.route('/')
 def index():
     return render_template('./index.html')
+
+@app.route('/config')
+def config():
+    return render_template('./config.html')
 
 @app.route('/nova_transacao')
 def nova_transacao():
@@ -176,12 +224,13 @@ def consultar_transacoes():
 def get_chain():
     chain_data = []
     for block in blockchain.chain:
-        chain_data.append(block.__dict__)
+        print(block)
+        chain_data.append(block)
     #print(chain_data[0]['timestamp'])
-
     response = {
         'length': len(chain_data),
-        'chain': chain_data
+        'chain': chain_data,
+        #'chain2': blockchain.chain,
     }
 
     return jsonify(response), 200
@@ -266,8 +315,35 @@ def mine_transactions():
 
     #incluir processo de verificação da assinatura digital por meio da chave primária
     newblock = blockchain.mine()
+    blockchain.consenso()
 
     return json.dumps({'block': newblock})
+
+@app.route('/add_node', methods=['POST'])
+def adicionar_nodes():
+    values = request.form
+    nodes = values.get('node_address').replace(" ", "").split(',')
+
+    if nodes is None:
+        return "Nenhum nó a ser adicionado", 400
+
+    for node in nodes:
+        blockchain.add_node(node)
+
+    response = {
+        'message': 'Novos nós adicionados na vizinhança',
+        'total_nodes': [node for node in blockchain.nodes],
+    }
+    print(response)
+    return jsonify(response), 201
+
+@app.route('/att_chain/<miner>', methods=['GET'])
+def atualizar_blockchain(miner):
+    print('http://' + miner + '/chain')
+    response = requests.get('http://127.0.0.1:' + miner + '/chain')
+    cadeia = response.json()['chain']
+    blockchain.att_chain(cadeia)
+    return json.dumps({'new_chain': cadeia})
 
 parser = ArgumentParser()
 parser.add_argument('-p', '--port', default=5000, type=int, help='porta a ser utilizada')

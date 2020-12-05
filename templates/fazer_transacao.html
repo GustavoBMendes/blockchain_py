@@ -40,6 +40,9 @@
 						<li class='nav-item'>
 							<a class='nav-link' href="/consultar_transacoes">Consultar Transações</a>
 						</li>
+						<li class='nav-item'>
+							<a class='nav-link' href="/config">Configurações</a>
+						</li>
 					</ul>
 				</div>
 			</div>
@@ -95,6 +98,15 @@
 				<label class="col-sm-3">Quantia a ser transferida:</label>
 				<div class="col-sm-9">
 					<input type="text" name="amount" id="amount" rows='2' class="form-control">
+				</div>
+			</div>
+
+			<br>
+
+			<div class="row">
+				<label class="col-sm-3">Endereço:</label>
+				<div class="col-sm-9">
+					<input type="text" name="endereco" id="endereco" rows='2' class="form-control">
 				</div>
 			</div>
 
@@ -189,7 +201,7 @@
 				$('#generate_transaction').click(function() {
 					if(document.getElementById('amount').value !== "" && document.getElementById('recipient_address').value !== "" && document.getElementById('sender_address').value !== "" && document.getElementById('sender_private_key').value !== ""){
 						$.ajax({
-							url: 'http://127.0.0.1:5000/gerar_transacao',
+							url: document.getElementById('endereco').value + '/gerar_transacao',
 							type: 'POST',
 							crossorigin: 'anonymous',
 							headers:{'Access-Control-Allow-Origin':'*'},
@@ -197,7 +209,7 @@
 							data: $('#transaction_form').serialize(),
 							success: function(){
 
-								$("#success_transaction_modal").modal('show');
+								//$("#success_transaction_modal").modal('show');
 
 								//$("#transaction_form")[0].reset();
 

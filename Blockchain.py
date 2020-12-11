@@ -181,6 +181,7 @@ class Blockchain:
         tamanho_atual = len(self.chain)
 
         for node in vizinhos:
+            print(node)
             print('http://' + node + '/chain')
             response = requests.get('http://' + node + '/chain')
 
@@ -190,7 +191,7 @@ class Blockchain:
                 cadeia = response.json()['chain']
 
                 if tam < tamanho_atual:
-                    requests.get('http://' + node + '/att_chain/' + str(port))
+                    requests.get('http://' + node + '/att_chain/' + str(port) + '/' + host)
 
 
 app = Flask(__name__)
@@ -337,10 +338,9 @@ def adicionar_nodes():
     print(response)
     return jsonify(response), 201
 
-@app.route('/att_chain/<miner>', methods=['GET'])
-def atualizar_blockchain(miner):
-    print('http://' + miner + '/chain')
-    response = requests.get('http://127.0.0.1:' + miner + '/chain')
+@app.route('/att_chain/<miner>/<hostAddr>', methods=['GET'])
+def atualizar_blockchain(miner, hostAddr):
+    response = requests.get('http://' + hostAddr + ':' + miner + '/chain')
     cadeia = response.json()['chain']
     blockchain.att_chain(cadeia)
     return json.dumps({'new_chain': cadeia})
@@ -349,4 +349,5 @@ parser = ArgumentParser()
 parser.add_argument('-p', '--port', default=5000, type=int, help='porta a ser utilizada')
 args = parser.parse_args()
 port = args.port
-app.run(host='127.0.0.1', debug=True, port=port)
+host = '192.168.100.42'
+app.run(host=host, debug=False, port=port)

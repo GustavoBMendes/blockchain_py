@@ -1,9 +1,3 @@
-
-# coding: utf-8
-
-# In[39]:
-
-
 import binascii
 
 import Crypto
@@ -79,13 +73,6 @@ class Blockchain:
         return self.chain[-1]
 
     def add_block(self, block, proof, copia):
-        """
-        A function that adds the block to the chain after verification.
-        Verification includes:
-        * Checking if the proof is valid.
-        * The hash_anterior referred in the block and the hash of latest block
-          in the chain match.
-        """
         hash_anterior = self.ultimo_bloco['hash']
 
         if hash_anterior != block.hash_anterior:
@@ -100,17 +87,12 @@ class Blockchain:
 
     def is_valid_proof(self, block, block_hash):
         """
-        Check if block_hash is valid hash of block and satisfies
-        the difficulty criteria.
+        verifica se a prova de trabalho é correta
         """
         return (block_hash.startswith('0' * Blockchain.difficulty) and
                 block_hash == block.compute_hash())
 
     def proof_of_work(self, block):
-        """
-        Function that tries different values of nonce to get a hash
-        that satisfies our difficulty criteria.
-        """
         block.nonce = 0
 
         computed_hash = block.compute_hash()
@@ -125,9 +107,9 @@ class Blockchain:
 
     def mine(self):
         """
-        This function serves as an interface to add the pending
-        transactions to the blockchain by adding them to the block
-        and figuring out Proof Of Work.
+        adiciona transações ao bloco
+        faz a prova de trabalho
+        anexa o bloco ao blockchain
         """
         if not self.unconfirmed_transactions:
             return False
@@ -199,8 +181,6 @@ CORS(app)
 blockchain = Blockchain()
 
 
-# In[41]:
-
 @app.route('/')
 def index():
     return render_template('./index.html')
@@ -237,12 +217,11 @@ def get_chain():
     return jsonify(response), 200
 
 
-# In[45]:
 
 @app.route('/carteira', methods=['GET'])
 def gerar_carteira():
     random_key = Crypto.Random.new().read
-    private_key = RSA.generate(1024, random_key)
+    private_key = RSA.generate(4096, random_key)
     public_key = private_key.publickey()
 
     response = {
@@ -349,5 +328,5 @@ parser = ArgumentParser()
 parser.add_argument('-p', '--port', default=5000, type=int, help='porta a ser utilizada')
 args = parser.parse_args()
 port = args.port
-host = '192.168.100.42'
+host = 'YOUR_HOST'
 app.run(host=host, debug=False, port=port)
